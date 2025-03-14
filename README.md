@@ -14,7 +14,7 @@ Find others who are using AbstractScript at our community page(in development).
 For the latest stable version:
 
 ```bash
-npm install -D abstractscript
+npm install abstractscript
 ```
 
 ## Documentation
