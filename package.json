@@ -1,6 +1,6 @@
 {
   "name": "abstractscript",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Interpretator for AbstractScript language",
   "main": "asc.js",
   "scripts": {
@@ -12,9 +12,9 @@
     "type": "git",
     "url": "https://github.com/finderfail/AbstractScript.git"
   },
-  "main": "./lib/asc.js",
+  "main": "./asc.js",
   "bin": {
-    "tsc": "./bin/asc"
+    "asc": "./bin/asc"
   },
   "engines": {
     "node": ">=18.20"
