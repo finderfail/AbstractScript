@@ -54,10 +54,10 @@ class Interpreter {
             const conditionResult = this.evaluateExpression(condition.trim());
             //console.log(`Condition Result: ${conditionResult}`); // for debug
             if (conditionResult) {
-                console.log("Executing true block");
+               // console.log("Executing true block");
                 this.execute(trueBlock.trim());
             } else {
-                console.log("Executing false block");
+               // console.log("Executing false block");
                 this.execute(falseBlock.trim());
             }
         } else {
