@@ -7,5 +7,9 @@
     "test": "node asc.js"
   },
   "author": "Ilya Finderov",
-  "license": "ISC"
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/finderfail/AbstractScript.git"
+  }
 }
