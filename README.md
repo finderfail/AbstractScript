@@ -2,7 +2,7 @@
 # AbstractScript
 
 [![npm version](https://badge.fury.io/js/abstractscript.svg)](https://www.npmjs.com/package/abstractscript)
-[![Downloads](https://img.shields.io/npm/dm/abstractscript.svg)](https://www.npmjs.com/package/typescript)
+[![Downloads](https://img.shields.io/npm/dm/abstractscript.svg)](https://www.npmjs.com/package/abstractscript)
 
 
 AbstractScript is a simple functional programming language interpreted in a JavaScript environment.
