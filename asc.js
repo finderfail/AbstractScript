@@ -47,15 +47,19 @@ class Interpreter {
     }
 
     handleIf(line) {
-        const match = line.match(/if (.+) { (.+) } else { (.+) }/);
+        const match = line.match(/if\s+(.+?)\s*{([^]*?)}(else\s*{([^]*?)})?/);
         if (!match) {
             throw new Error(`Invalid if statement: ${line}`);
         }
-        const [, condition, trueBlock, falseBlock] = match;
-        if (this.evaluateExpression(condition)) {
-            this.execute(trueBlock);
-        } else {
-            this.execute(falseBlock);
+        const [, condition, trueBlock, , falseBlock] = match;
+    
+        const shouldExecuteFalseBlock = falseBlock ? falseBlock.trim() : null;
+        const conditionResult = this.evaluateExpression(condition);
+    
+        if (conditionResult) {
+            return this.execute(trueBlock.trim());
+        } else if (shouldExecuteFalseBlock) {
+            return this.execute(shouldExecuteFalseBlock);
         }
     }
 
@@ -90,6 +94,9 @@ class Interpreter {
                     break;
                 case '^':
                     result = Math.pow(result, nextValue);
+                    break;
+                case '==':
+                    result = (result === nextValue);
                     break;
                 default:
                     throw new Error(`Unknown operator: ${operator}`);
