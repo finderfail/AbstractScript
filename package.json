@@ -2,9 +2,9 @@
   "name": "abstractscript",
   "version": "1.0.0",
   "description": "Interpretator for AbstractScript language",
-  "main": "index.js",
+  "main": "asc.js",
   "scripts": {
-    "test": "node index.js"
+    "test": "node asc.js"
   },
   "author": "Ilya Finderov",
   "license": "ISC"
