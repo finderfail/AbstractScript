@@ -47,19 +47,21 @@ class Interpreter {
     }
 
     handleIf(line) {
-        const match = line.match(/if\s+(.+?)\s*{([^]*?)}(else\s*{([^]*?)})?/);
-        if (!match) {
+        const match = line.match(/if\s+(.+?)\s*{([^]*?)}\s*else\s*{([^]*?)}/);
+        if (match) {
+            const [, condition, trueBlock, falseBlock] = match;
+            console.log(`Condition: ${condition}`); // for debug
+            const conditionResult = this.evaluateExpression(condition.trim());
+            console.log(`Condition Result: ${conditionResult}`); // for debug
+            if (conditionResult) {
+                console.log("Executing true block");
+                this.execute(trueBlock.trim());
+            } else {
+                console.log("Executing false block");
+                this.execute(falseBlock.trim());
+            }
+        } else {
             throw new Error(`Invalid if statement: ${line}`);
-        }
-        const [, condition, trueBlock, , falseBlock] = match;
-    
-        const shouldExecuteFalseBlock = falseBlock ? falseBlock.trim() : null;
-        const conditionResult = this.evaluateExpression(condition);
-    
-        if (conditionResult) {
-            return this.execute(trueBlock.trim());
-        } else if (shouldExecuteFalseBlock) {
-            return this.execute(shouldExecuteFalseBlock);
         }
     }
 
