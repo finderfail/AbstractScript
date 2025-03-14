@@ -50,9 +50,9 @@ class Interpreter {
         const match = line.match(/if\s+(.+?)\s*{([^]*?)}\s*else\s*{([^]*?)}/);
         if (match) {
             const [, condition, trueBlock, falseBlock] = match;
-            console.log(`Condition: ${condition}`); // for debug
+            //console.log(`Condition: ${condition}`); // for debug
             const conditionResult = this.evaluateExpression(condition.trim());
-            console.log(`Condition Result: ${conditionResult}`); // for debug
+            //console.log(`Condition Result: ${conditionResult}`); // for debug
             if (conditionResult) {
                 console.log("Executing true block");
                 this.execute(trueBlock.trim());
