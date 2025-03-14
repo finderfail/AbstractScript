@@ -66,9 +66,17 @@ class Interpreter {
     }
 
     handleWhile(line) {
-        const [, condition, block] = line.match(/while (.+) { (.+) }/);
-        while (this.evaluateExpression(condition)) {
-            this.execute(block);
+        const match = line.match(/while\s+(.+?)\s*{([^]*?)}/);
+        if (!match) {
+            throw new Error(`Invalid while statement: ${line}`);
+        }
+        const [, condition, block] = match;
+    
+        while (this.evaluateExpression(condition.trim())) {
+            const lines = block.trim().split(';').map(line => line.trim()).filter(line => line.length > 0);
+            for (const line of lines) {
+                this.executeLine(line);
+            }
         }
     }
 
