@@ -1,4 +1,3 @@
-```markdown docs.md
 # ASC Interpreter Documentation
 
 ## Overview
