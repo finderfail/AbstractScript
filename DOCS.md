@@ -127,7 +127,7 @@ if (true) {
 }
 
 print(x);     // 10
-// print(y);  // Error: y is not defined
+print(y);  // Error: y is not defined
 ```
 
 ## Operators
