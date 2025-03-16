@@ -1,9 +1,8 @@
-```markdown docs.md
-# ASC Interpreter Documentation
+# AbstractScript Documentation
 
 ## Overview
 
-The ASC Interpreter is a simple scripting language interpreter written in JavaScript. It supports basic operations such as variable declaration, printing, conditional statements, and loops. This documentation provides an overview of the language syntax and usage.
+The AbstractScript is a simple scripting language with interpreter written in JavaScript. It supports basic operations such as variable declaration, printing, conditional statements, and loops. This documentation provides an overview of the language syntax and usage.
 
 ## Getting Started
 
@@ -13,38 +12,34 @@ The ASC Interpreter is a simple scripting language interpreter written in JavaSc
 
 ### Installation
 
-1. Clone the repository:
+1. Create project:
    ```sh
-   git clone <repository-url>
+   npm init -y
    ```
 
-2. Navigate to the project directory:
+2. Install the interpreter:
    ```sh
-   cd asc-interpreter
+   npm install abstractscript
    ```
-
-3. Install the dependencies:
+   or install globally
    ```sh
-   npm install
+   npm install -g abstractscript 
    ```
 
 ### Usage
 
-To run the interpreter, use the following command:
+To run the interpreter, use the following command in package.json:
 ```sh
-node asc.js <path-to-code-file>
+"start": "asc index.as"
 ```
 
 For example:
 ```sh
-node asc.js test.as
+npm run start
 ```
-
-### Help
-
-To display the help message, use the `-h` flag:
+or if you installed globally
 ```sh
-node asc.js -h
+asc index.as
 ```
 
 ## Language Syntax
