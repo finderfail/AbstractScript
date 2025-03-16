@@ -7,4 +7,3 @@ if c == 15 { print msg } else { print c };
 if c == 10 { print msg } else { print c };
 
 print usa;
-while c == 15 { print c; c = c - 1; }

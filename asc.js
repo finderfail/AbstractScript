@@ -66,7 +66,7 @@ class Interpreter {
     }
 
     handleWhile(line) {
-        const match = line.match(/while\s+(.+?)\s*{([^]*?)}/);
+        const match = line.match(/while\s+(.+?)\s*{([^]*?)}/s);
         if (!match) {
             throw new Error(`Invalid while statement: ${line}`);
         }
