@@ -287,6 +287,8 @@ class Parser {
       }
     } else if (this.currentToken.type === 'LBRACE') {
       return this.blockStatement();
+    } else if (this.currentToken.type === 'FOR') {
+      return this.forStatement();
     }
     
     throw new Error(`Unexpected token: ${this.currentToken.type}`);
@@ -303,6 +305,38 @@ class Parser {
     this.eat('RBRACE');
     return { type: 'BlockStatement', body };
   }
+
+  // forStatement() {
+  //   this.eat('FOR');
+  //   this.eat('LPAREN');
+
+  //   let init = null;
+  //   if (this.currentToken.type !== 'SEMICOLON') {
+  //     init = this.statement();
+  //     console.log(init);
+  //   }
+  //   this.eat('SEMICOLON');
+    
+
+  //   let test = null;
+  //   if (this.currentToken.type !== 'SEMICOLON') {
+  //     test = this.expression();
+  //     console.log(test);
+  //   }
+  //   this.eat('SEMICOLON');
+
+  //   let update = null;
+  //   if (this.currentToken.type !== 'RPAREN') {
+  //     update = this.expression();
+  //     console.log(update);
+  //   }
+  //   this.eat('RPAREN');
+
+  //   const body = this.statement();
+  //   console.log(body);
+
+  //   return { type: 'ForStatement', init, test, update, body };
+  // }
 
   variableDeclaration() {
     this.eat('LET');
@@ -572,6 +606,8 @@ class Interpreter {
         return this.evaluateReturnStatement(node);
       case 'PrintStatement':
         return this.evaluatePrintStatement(node);
+      case 'ForStatement':
+        return this.evaluateForStatement(node);  
       default:
         throw new Error(`Unknown node type: ${node.type}`);
     }
@@ -767,6 +803,19 @@ class Interpreter {
     console.log(value);
     return value;
   }
+
+  evaluateForStatement(node) {
+    if (node.init) {
+      this.evaluate(node.init);
+    }
+    while (node.test ? this.evaluate(node.test) : true) {
+      this.evaluate(node.body);
+      if (node.update) {
+        this.evaluate(node.update);
+      }
+    }
+    return null;
+  }
 }
 
 // Main function to run the interpreter
@@ -793,7 +842,7 @@ function main() {
   const args = process.argv.slice(2);
   
   if (args.length === 0) {
-    console.log('Usage: simplelang <filename.as>');
+    console.log('Usage: asc <filename.as>');
     process.exit(1);
   }
   
