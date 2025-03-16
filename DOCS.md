@@ -22,10 +22,10 @@ AbstractScript is a lightweight, interpreted programming language designed for s
 
 ### Installation
 
-1. Save the AbstractScript interpreter as `AbstractScript.js`
-2. Make it executable: `chmod +x AbstractScript.js`
+1. Save the AbstractScript interpreter as `asc.js`
+2. Make it executable: `chmod +x asc.js`
 3. Create a script file with the `.as` extension
-4. Run your script: `node AbstractScript.js yourscript.as`
+4. Run your script: `node asc.js yourscript.as`
 
 ### Your First AbstractScript Program
 
@@ -37,7 +37,7 @@ print("Hello world");
 Run it with:
 
 ```bash
-node AbstractScript.js hello.as
+node asc.js hello.as
 ```
 
 ## Language Syntax
@@ -285,5 +285,5 @@ print(true);
 Run AbstractScript scripts from the command line:
 
 ```shellscript
-node AbstractScript.js <filename.as>
+node asc.js <filename.as>
 ```
