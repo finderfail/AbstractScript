@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+const importedFiles = new Set();
+
 // Lexer - Converts source code into tokens
 class Lexer {
   constructor(input) {
@@ -11,7 +13,7 @@ class Lexer {
     this.currentChar = this.input[this.position];
     this.keywords = [
       'let', 'if', 'else', 'while', 'function', 
-      'return', 'true', 'false', 'print'
+      'return', 'true', 'false', 'print', 'import'
     ];
   }
 
@@ -81,19 +83,18 @@ class Lexer {
 
   getNextToken() {
     while (this.currentChar) {
-        if (/\s/.test(this.currentChar)) {
-            this.skipWhitespace();
-            continue;
-        }
-          
-        if (/\d/.test(this.currentChar)) {
-            return this.number();
-        }
-          
-          // This is the critical part - make sure identifiers are handled correctly
-        if (/[a-zA-Z_]/.test(this.currentChar)) {
-            return this.identifier();
-        }
+      if (/\s/.test(this.currentChar)) {
+        this.skipWhitespace();
+        continue;
+      }
+      
+      if (/\d/.test(this.currentChar)) {
+        return this.number();
+      }
+      
+      if (/[a-zA-Z_]/.test(this.currentChar)) {
+        return this.identifier();
+      }
       
       if (this.currentChar === '"') {
         return this.string();
@@ -116,6 +117,14 @@ class Lexer {
       
       if (this.currentChar === '/') {
         this.advance();
+        // Check for comments
+        if (this.currentChar === '/') {
+          // Skip single-line comment
+          while (this.currentChar && this.currentChar !== '\n') {
+            this.advance();
+          }
+          continue;
+        }
         return { type: 'DIVIDE', value: '/' };
       }
       
@@ -200,8 +209,12 @@ class Lexer {
         this.advance();
         return { type: 'OR', value: '||' };
       }
-        console.error(`Unrecognized character: '${this.currentChar}' at position ${this.position}`);
-        console.error(`Context: "${this.input.substring(Math.max(0, this.position - 10), Math.min(this.input.length, this.position + 10))}"`);
+      
+      if (this.currentChar === '\n' || this.currentChar === '\r') {
+        this.advance();
+        continue;
+      }
+      
       throw new Error(`Invalid character: ${this.currentChar}`);
     }
     
@@ -272,6 +285,8 @@ class Parser {
       return this.returnStatement();
     } else if (this.currentToken.type === 'PRINT') {
       return this.printStatement();
+    } else if (this.currentToken.type === 'IMPORT') {
+      return this.importStatement();
     } else if (this.currentToken.type === 'IDENTIFIER') {
       const identifier = this.eat('IDENTIFIER');
       
@@ -287,8 +302,6 @@ class Parser {
       }
     } else if (this.currentToken.type === 'LBRACE') {
       return this.blockStatement();
-    } else if (this.currentToken.type === 'FOR') {
-      return this.forStatement();
     }
     
     throw new Error(`Unexpected token: ${this.currentToken.type}`);
@@ -305,38 +318,6 @@ class Parser {
     this.eat('RBRACE');
     return { type: 'BlockStatement', body };
   }
-
-  // forStatement() {
-  //   this.eat('FOR');
-  //   this.eat('LPAREN');
-
-  //   let init = null;
-  //   if (this.currentToken.type !== 'SEMICOLON') {
-  //     init = this.statement();
-  //     console.log(init);
-  //   }
-  //   this.eat('SEMICOLON');
-    
-
-  //   let test = null;
-  //   if (this.currentToken.type !== 'SEMICOLON') {
-  //     test = this.expression();
-  //     console.log(test);
-  //   }
-  //   this.eat('SEMICOLON');
-
-  //   let update = null;
-  //   if (this.currentToken.type !== 'RPAREN') {
-  //     update = this.expression();
-  //     console.log(update);
-  //   }
-  //   this.eat('RPAREN');
-
-  //   const body = this.statement();
-  //   console.log(body);
-
-  //   return { type: 'ForStatement', init, test, update, body };
-  // }
 
   variableDeclaration() {
     this.eat('LET');
@@ -429,6 +410,16 @@ class Parser {
     this.eat('SEMICOLON');
     
     return { type: 'PrintStatement', argument };
+  }
+
+  importStatement() {
+    this.eat('IMPORT');
+    this.eat('LPAREN');
+    const filePath = this.eat('STRING').value;
+    this.eat('RPAREN');
+    this.eat('SEMICOLON');
+    
+    return { type: 'ImportStatement', path: filePath };
   }
 
   expression() {
@@ -566,10 +557,11 @@ class Parser {
 
 // Interpreter - Executes the AST
 class Interpreter {
-  constructor() {
-    this.globalScope = {};
+  constructor(globalScope = {}) {
+    this.globalScope = globalScope;
     this.scope = [this.globalScope];
     this.returnValue = null;
+    this.baseDir = process.cwd();
   }
 
   getCurrentScope() {
@@ -606,8 +598,8 @@ class Interpreter {
         return this.evaluateReturnStatement(node);
       case 'PrintStatement':
         return this.evaluatePrintStatement(node);
-      case 'ForStatement':
-        return this.evaluateForStatement(node);  
+      case 'ImportStatement':
+        return this.evaluateImportStatement(node);
       default:
         throw new Error(`Unknown node type: ${node.type}`);
     }
@@ -804,22 +796,49 @@ class Interpreter {
     return value;
   }
 
-  evaluateForStatement(node) {
-    if (node.init) {
-      this.evaluate(node.init);
+  evaluateImportStatement(node) {
+    const filePath = path.resolve(this.baseDir, node.path);
+
+    if (importedFiles.has(filePath)) {
+      return null;
     }
-    while (node.test ? this.evaluate(node.test) : true) {
-      this.evaluate(node.body);
-      if (node.update) {
-        this.evaluate(node.update);
-      }
+    
+    try {
+      importedFiles.add(filePath);
+      const code = fs.readFileSync(filePath, 'utf8');
+      const previousBaseDir = this.baseDir;
+      this.baseDir = path.dirname(filePath);
+      const result = processImport(code, this.globalScope, this.baseDir);
+      this.baseDir = previousBaseDir;
+      
+      return result;
+    } catch (error) {
+      throw new Error(`Error importing file ${node.path}: ${error.message}`);
     }
-    return null;
+  }
+}
+
+// Function to process imported files
+function processImport(code, globalScope, baseDir) {
+  try {
+    const lexer = new Lexer(code);
+    const tokens = lexer.tokenize();
+    
+    const parser = new Parser(tokens);
+    const ast = parser.parse();
+    
+    // Use the same global scope for the imported file
+    const interpreter = new Interpreter(globalScope);
+    interpreter.baseDir = baseDir;
+    
+    return interpreter.evaluate(ast);
+  } catch (error) {
+    throw new Error(`Error processing import: ${error.message}`);
   }
 }
 
 // Main function to run the interpreter
-function runInterpreter(code) {
+function runInterpreter(code, isMainFile = true) {
   try {
     const lexer = new Lexer(code);
     const tokens = lexer.tokenize();
@@ -828,11 +847,18 @@ function runInterpreter(code) {
     const ast = parser.parse();
     
     const interpreter = new Interpreter();
-    interpreter.evaluate(ast);
+    const result = interpreter.evaluate(ast);
     
-    return { success: true };
+    if (isMainFile) {
+      importedFiles.clear();
+    }
+    
+    return result;
   } catch (error) {
     console.error(`Error: ${error.message}`);
+    if (isMainFile) {
+      importedFiles.clear();
+    }
     return { success: false, error: error.message };
   }
 }
@@ -842,7 +868,7 @@ function main() {
   const args = process.argv.slice(2);
   
   if (args.length === 0) {
-    console.log('Usage: asc <filename.as>');
+    console.log('Usage: node asc.js <filename.as>');
     process.exit(1);
   }
   
@@ -862,5 +888,4 @@ function main() {
   }
 }
 
-// Run the CLI
 main();

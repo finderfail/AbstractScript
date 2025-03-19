@@ -1,3 +1,5 @@
 ./package-lock.json
 package-lock.json
 test.as
+node_modules
+test.js

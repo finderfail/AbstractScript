@@ -1,3 +1,4 @@
+import("test.as");
 print("=== AbstractScript Language Showcase ===");
 print("This program demonstrates the key features and strengths of AbstractScript");
 print("-------------------------------------------");
@@ -20,7 +21,12 @@ print("\n2. Arithmetic Operations:");
 
 let a = 10;
 let b = 3;
-
+print("Using functions from math.as:");
+print("5 + 3 = " + add(5, 3));
+print("10 - 4 = " + subtract(10, 4));
+print("6 * 7 = " + multiply(6, 7));
+print("20 / 5 = " + divide(20, 5));
+print("Factorial of 5 = " + factorial(5));
 print("  Addition: " + a + " + " + b + " = " + (a + b));
 print("  Subtraction: " + a + " - " + b + " = " + (a - b));
 print("  Multiplication: " + a + " * " + b + " = " + (a * b));

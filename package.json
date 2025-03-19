@@ -1,9 +1,9 @@
 {
   "name": "abstractscript",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Interpretator for AbstractScript language",
   "type": "module",
-  "main": "asc.js",
+  "main": "./asc.js",
   "scripts": {
     "test": "node asc.js"
   },
@@ -13,7 +13,6 @@
     "type": "git",
     "url": "https://github.com/finderfail/AbstractScript.git"
   },
-  "main": "./asc.js",
   "bin": {
     "asc": "./bin/asc"
   },

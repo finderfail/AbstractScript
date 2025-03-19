@@ -53,6 +53,14 @@ Single-line comments start with `//`:
 print("Hello"); // This is also a comment
 ```
 
+### Imports
+
+Imports start with `import`:
+
+```plaintext
+import("Hello.as"); // This is importing your other code file
+```
+
 ### Statements
 
 Each statement must end with a semicolon:
