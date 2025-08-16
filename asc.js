@@ -1,241 +1,153 @@
 #!/usr/bin/env node
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from "fs";
+import path from "path";
 
-const importedFiles = new Set();
-
-// Lexer - Converts source code into tokens
+// ---------------- Lexer ----------------
 class Lexer {
   constructor(input) {
     this.input = input;
     this.position = 0;
     this.currentChar = this.input[this.position];
     this.keywords = [
-      'let', 'if', 'else', 'while', 'function', 
-      'return', 'true', 'false', 'print', 'import'
+      "let", "if", "else", "while", "function",
+      "return", "true", "false", "print", "import"
     ];
   }
 
   advance() {
     this.position++;
-    if (this.position < this.input.length) {
-      this.currentChar = this.input[this.position];
-    } else {
-      this.currentChar = null;
-    }
+    this.currentChar = this.position < this.input.length ? this.input[this.position] : null;
   }
 
   skipWhitespace() {
-    while (this.currentChar && /\s/.test(this.currentChar)) {
-      this.advance();
-    }
+    while (this.currentChar && /\s/.test(this.currentChar)) this.advance();
   }
 
   number() {
-    let result = '';
+    let result = "";
     while (this.currentChar && /\d/.test(this.currentChar)) {
       result += this.currentChar;
       this.advance();
     }
-    
-    if (this.currentChar === '.') {
-      result += this.currentChar;
+    if (this.currentChar === ".") {
+      result += ".";
       this.advance();
-      
       while (this.currentChar && /\d/.test(this.currentChar)) {
         result += this.currentChar;
         this.advance();
       }
-      
-      return { type: 'NUMBER', value: parseFloat(result) };
+      return { type: "NUMBER", value: parseFloat(result) };
     }
-    
-    return { type: 'NUMBER', value: parseInt(result) };
+    return { type: "NUMBER", value: parseInt(result) };
   }
 
   identifier() {
-    let result = '';
+    let result = "";
     while (this.currentChar && /[a-zA-Z0-9_]/.test(this.currentChar)) {
       result += this.currentChar;
       this.advance();
     }
-    
     if (this.keywords.includes(result)) {
       return { type: result.toUpperCase(), value: result };
     }
-    
-    return { type: 'IDENTIFIER', value: result };
+    return { type: "IDENTIFIER", value: result };
   }
 
   string() {
-    let result = '';
-    this.advance(); // Skip opening quote
-    
+    let result = "";
+    this.advance();
     while (this.currentChar && this.currentChar !== '"') {
       result += this.currentChar;
       this.advance();
     }
-    
-    this.advance(); // Skip closing quote
-    return { type: 'STRING', value: result };
+    this.advance();
+    return { type: "STRING", value: result };
   }
 
   getNextToken() {
     while (this.currentChar) {
-      if (/\s/.test(this.currentChar)) {
-        this.skipWhitespace();
-        continue;
-      }
-      
-      if (/\d/.test(this.currentChar)) {
-        return this.number();
-      }
-      
-      if (/[a-zA-Z_]/.test(this.currentChar)) {
-        return this.identifier();
-      }
-      
-      if (this.currentChar === '"') {
-        return this.string();
-      }
-      
-      if (this.currentChar === '+') {
+      if (/\s/.test(this.currentChar)) { this.skipWhitespace(); continue; }
+      if (/\d/.test(this.currentChar)) return this.number();
+      if (/[a-zA-Z_]/.test(this.currentChar)) return this.identifier();
+      if (this.currentChar === '"') return this.string();
+
+      const singleCharTokens = {
+        "+": "PLUS", "-": "MINUS", "*": "MULTIPLY", "%": "MODULO",
+        "(": "LPAREN", ")": "RPAREN", "{": "LBRACE", "}": "RBRACE",
+        ";": "SEMICOLON", ",": "COMMA"
+      };
+
+      if (singleCharTokens[this.currentChar]) {
+        const token = { type: singleCharTokens[this.currentChar], value: this.currentChar };
         this.advance();
-        return { type: 'PLUS', value: '+' };
+        return token;
       }
-      
-      if (this.currentChar === '-') {
+
+      if (this.currentChar === "/") {
         this.advance();
-        return { type: 'MINUS', value: '-' };
-      }
-      
-      if (this.currentChar === '*') {
-        this.advance();
-        return { type: 'MULTIPLY', value: '*' };
-      }
-      
-      if (this.currentChar === '/') {
-        this.advance();
-        // Check for comments
-        if (this.currentChar === '/') {
-          // Skip single-line comment
-          while (this.currentChar && this.currentChar !== '\n') {
-            this.advance();
-          }
+        if (this.currentChar === "/") {
+          while (this.currentChar && this.currentChar !== "\n") this.advance();
           continue;
         }
-        return { type: 'DIVIDE', value: '/' };
+        return { type: "DIVIDE", value: "/" };
       }
-      
-      if (this.currentChar === '=') {
+
+      if (this.currentChar === "=") {
         this.advance();
-        if (this.currentChar === '=') {
-          this.advance();
-          return { type: 'EQUALS', value: '==' };
-        }
-        return { type: 'ASSIGN', value: '=' };
+        if (this.currentChar === "=") { this.advance(); return { type: "EQUALS", value: "==" }; }
+        return { type: "ASSIGN", value: "=" };
       }
-      
-      if (this.currentChar === '>') {
+
+      if (this.currentChar === ">") {
         this.advance();
-        if (this.currentChar === '=') {
-          this.advance();
-          return { type: 'GTE', value: '>=' };
-        }
-        return { type: 'GT', value: '>' };
+        if (this.currentChar === "=") { this.advance(); return { type: "GTE", value: ">=" }; }
+        return { type: "GT", value: ">" };
       }
-      
-      if (this.currentChar === '<') {
+
+      if (this.currentChar === "<") {
         this.advance();
-        if (this.currentChar === '=') {
-          this.advance();
-          return { type: 'LTE', value: '<=' };
-        }
-        return { type: 'LT', value: '<' };
+        if (this.currentChar === "=") { this.advance(); return { type: "LTE", value: "<=" }; }
+        return { type: "LT", value: "<" };
       }
-      
-      if (this.currentChar === '!') {
+
+      if (this.currentChar === "!") {
         this.advance();
-        if (this.currentChar === '=') {
-          this.advance();
-          return { type: 'NOT_EQUALS', value: '!=' };
-        }
+        if (this.currentChar === "=") { this.advance(); return { type: "NOT_EQUALS", value: "!=" }; }
       }
-      
-      if (this.currentChar === '(') {
-        this.advance();
-        return { type: 'LPAREN', value: '(' };
+
+      if (this.currentChar === "&" && this.input[this.position + 1] === "&") {
+        this.advance(); this.advance();
+        return { type: "AND", value: "&&" };
       }
-      
-      if (this.currentChar === ')') {
-        this.advance();
-        return { type: 'RPAREN', value: ')' };
+
+      if (this.currentChar === "|" && this.input[this.position + 1] === "|") {
+        this.advance(); this.advance();
+        return { type: "OR", value: "||" };
       }
-      
-      if (this.currentChar === '{') {
-        this.advance();
-        return { type: 'LBRACE', value: '{' };
-      }
-      
-      if (this.currentChar === '}') {
-        this.advance();
-        return { type: 'RBRACE', value: '}' };
-      }
-      
-      if (this.currentChar === ';') {
-        this.advance();
-        return { type: 'SEMICOLON', value: ';' };
-      }
-      
-      if (this.currentChar === ',') {
-        this.advance();
-        return { type: 'COMMA', value: ',' };
-      }
-      
-      if (this.currentChar === '%') {
-        this.advance();
-        return { type: 'MODULO', value: '%' };
-      }
-      
-      if (this.currentChar === '&' && this.input[this.position + 1] === '&') {
-        this.advance();
-        this.advance();
-        return { type: 'AND', value: '&&' };
-      }
-      
-      if (this.currentChar === '|' && this.input[this.position + 1] === '|') {
-        this.advance();
-        this.advance();
-        return { type: 'OR', value: '||' };
-      }
-      
-      if (this.currentChar === '\n' || this.currentChar === '\r') {
+
+      if (this.currentChar === "\n" || this.currentChar === "\r") {
         this.advance();
         continue;
       }
-      
+
       throw new Error(`Invalid character: ${this.currentChar}`);
     }
-    
-    return { type: 'EOF', value: null };
+    return { type: "EOF", value: null };
   }
 
   tokenize() {
     const tokens = [];
     let token = this.getNextToken();
-    
-    while (token.type !== 'EOF') {
+    while (token.type !== "EOF") {
       tokens.push(token);
       token = this.getNextToken();
     }
-    
     tokens.push(token);
     return tokens;
   }
 }
 
-// Parser - Converts tokens into an Abstract Syntax Tree (AST)
+// ---------------- Parser (AST builder) ----------------
 class Parser {
   constructor(tokens) {
     this.tokens = tokens;
@@ -245,645 +157,574 @@ class Parser {
 
   advance() {
     this.position++;
-    if (this.position < this.tokens.length) {
-      this.currentToken = this.tokens[this.position];
-    } else {
-      this.currentToken = null;
-    }
+    this.currentToken = this.position < this.tokens.length ? this.tokens[this.position] : null;
   }
 
-  eat(tokenType) {
-    if (this.currentToken && this.currentToken.type === tokenType) {
+  eat(type) {
+    if (this.currentToken && this.currentToken.type === type) {
       const token = this.currentToken;
       this.advance();
       return token;
-    } else {
-      throw new Error(`Expected ${tokenType} but got ${this.currentToken?.type}`);
     }
+    throw new Error(`Expected ${type}, got ${this.currentToken?.type}`);
   }
 
   program() {
     const statements = [];
-    
-    while (this.currentToken && this.currentToken.type !== 'EOF') {
+    while (this.currentToken && this.currentToken.type !== "EOF") {
       statements.push(this.statement());
     }
-    
-    return { type: 'Program', body: statements };
+    return { type: "Program", body: statements };
   }
 
   statement() {
-    if (this.currentToken.type === 'LET') {
-      return this.variableDeclaration();
-    } else if (this.currentToken.type === 'IF') {
-      return this.ifStatement();
-    } else if (this.currentToken.type === 'WHILE') {
-      return this.whileStatement();
-    } else if (this.currentToken.type === 'FUNCTION') {
-      return this.functionDeclaration();
-    } else if (this.currentToken.type === 'RETURN') {
-      return this.returnStatement();
-    } else if (this.currentToken.type === 'PRINT') {
-      return this.printStatement();
-    } else if (this.currentToken.type === 'IMPORT') {
-      return this.importStatement();
-    } else if (this.currentToken.type === 'IDENTIFIER') {
-      const identifier = this.eat('IDENTIFIER');
-      
-      if (this.currentToken.type === 'ASSIGN') {
-        this.eat('ASSIGN');
+    if (this.currentToken.type === "LET") return this.variableDeclaration();
+    if (this.currentToken.type === "IF") return this.ifStatement();
+    if (this.currentToken.type === "WHILE") return this.whileStatement();
+    if (this.currentToken.type === "FUNCTION") return this.functionDeclaration();
+    if (this.currentToken.type === "RETURN") return this.returnStatement();
+    if (this.currentToken.type === "PRINT") return this.printStatement();
+    if (this.currentToken.type === "IMPORT") return this.importStatement();
+    if (this.currentToken.type === "IDENTIFIER") {
+      const id = this.eat("IDENTIFIER");
+      if (this.currentToken.type === "ASSIGN") {
+        this.eat("ASSIGN");
         const value = this.expression();
-        this.eat('SEMICOLON');
-        return { type: 'AssignmentExpression', name: identifier.value, value };
-      } else if (this.currentToken.type === 'LPAREN') {
-        const args = this.functionCall(identifier.value);
-        this.eat('SEMICOLON');
-        return args;
+        this.eat("SEMICOLON");
+        return { type: "AssignmentExpression", name: id.value, value };
+      } else if (this.currentToken.type === "LPAREN") {
+        const call = this.functionCall(id.value);
+        this.eat("SEMICOLON");
+        return call;
       }
-    } else if (this.currentToken.type === 'LBRACE') {
-      return this.blockStatement();
     }
-    
+    if (this.currentToken.type === "LBRACE") return this.blockStatement();
     throw new Error(`Unexpected token: ${this.currentToken.type}`);
   }
 
   blockStatement() {
-    this.eat('LBRACE');
+    this.eat("LBRACE");
     const body = [];
-    
-    while (this.currentToken && this.currentToken.type !== 'RBRACE') {
+    while (this.currentToken && this.currentToken.type !== "RBRACE") {
       body.push(this.statement());
     }
-    
-    this.eat('RBRACE');
-    return { type: 'BlockStatement', body };
+    this.eat("RBRACE");
+    return { type: "BlockStatement", body };
   }
 
   variableDeclaration() {
-    this.eat('LET');
-    const name = this.eat('IDENTIFIER').value;
-    this.eat('ASSIGN');
+    this.eat("LET");
+    const name = this.eat("IDENTIFIER").value;
+    this.eat("ASSIGN");
     const value = this.expression();
-    this.eat('SEMICOLON');
-    
-    return { type: 'VariableDeclaration', name, value };
+    this.eat("SEMICOLON");
+    return { type: "VariableDeclaration", name, value };
   }
 
   ifStatement() {
-    this.eat('IF');
-    this.eat('LPAREN');
+    this.eat("IF"); this.eat("LPAREN");
     const test = this.expression();
-    this.eat('RPAREN');
+    this.eat("RPAREN");
     const consequent = this.statement();
-    
     let alternate = null;
-    if (this.currentToken && this.currentToken.type === 'ELSE') {
-      this.eat('ELSE');
+    if (this.currentToken && this.currentToken.type === "ELSE") {
+      this.eat("ELSE");
       alternate = this.statement();
     }
-    
-    return { type: 'IfStatement', test, consequent, alternate };
+    return { type: "IfStatement", test, consequent, alternate };
   }
 
   whileStatement() {
-    this.eat('WHILE');
-    this.eat('LPAREN');
+    this.eat("WHILE"); this.eat("LPAREN");
     const test = this.expression();
-    this.eat('RPAREN');
+    this.eat("RPAREN");
     const body = this.statement();
-    
-    return { type: 'WhileStatement', test, body };
+    return { type: "WhileStatement", test, body };
   }
 
   functionDeclaration() {
-    this.eat('FUNCTION');
-    const name = this.eat('IDENTIFIER').value;
-    this.eat('LPAREN');
-    
+    this.eat("FUNCTION");
+    const name = this.eat("IDENTIFIER").value;
+    this.eat("LPAREN");
     const params = [];
-    if (this.currentToken.type !== 'RPAREN') {
-      params.push(this.eat('IDENTIFIER').value);
-      
-      while (this.currentToken.type === 'COMMA') {
-        this.eat('COMMA');
-        params.push(this.eat('IDENTIFIER').value);
+    if (this.currentToken.type !== "RPAREN") {
+      params.push(this.eat("IDENTIFIER").value);
+      while (this.currentToken.type === "COMMA") {
+        this.eat("COMMA");
+        params.push(this.eat("IDENTIFIER").value);
       }
     }
-    
-    this.eat('RPAREN');
+    this.eat("RPAREN");
     const body = this.statement();
-    
-    return { type: 'FunctionDeclaration', name, params, body };
+    return { type: "FunctionDeclaration", name, params, body };
   }
 
   functionCall(name) {
-    this.eat('LPAREN');
-    
+    this.eat("LPAREN");
     const args = [];
-    if (this.currentToken.type !== 'RPAREN') {
+    if (this.currentToken.type !== "RPAREN") {
       args.push(this.expression());
-      
-      while (this.currentToken.type === 'COMMA') {
-        this.eat('COMMA');
+      while (this.currentToken.type === "COMMA") {
+        this.eat("COMMA");
         args.push(this.expression());
       }
     }
-    
-    this.eat('RPAREN');
-    
-    return { type: 'CallExpression', name, arguments: args };
+    this.eat("RPAREN");
+    return { type: "CallExpression", name, arguments: args };
   }
 
   returnStatement() {
-    this.eat('RETURN');
-    const argument = this.expression();
-    this.eat('SEMICOLON');
-    
-    return { type: 'ReturnStatement', argument };
+    this.eat("RETURN");
+    const arg = this.expression();
+    this.eat("SEMICOLON");
+    return { type: "ReturnStatement", argument: arg };
   }
 
   printStatement() {
-    this.eat('PRINT');
-    this.eat('LPAREN');
-    const argument = this.expression();
-    this.eat('RPAREN');
-    this.eat('SEMICOLON');
-    
-    return { type: 'PrintStatement', argument };
+    this.eat("PRINT"); this.eat("LPAREN");
+    const arg = this.expression();
+    this.eat("RPAREN"); this.eat("SEMICOLON");
+    return { type: "PrintStatement", argument: arg };
   }
 
   importStatement() {
-    this.eat('IMPORT');
-    this.eat('LPAREN');
-    const filePath = this.eat('STRING').value;
-    this.eat('RPAREN');
-    this.eat('SEMICOLON');
-    
-    return { type: 'ImportStatement', path: filePath };
+    this.eat("IMPORT"); this.eat("LPAREN");
+    const file = this.eat("STRING").value;
+    this.eat("RPAREN"); this.eat("SEMICOLON");
+    return { type: "ImportStatement", path: file };
   }
 
-  expression() {
-    return this.logicalOr();
-  }
-
+  expression() { return this.logicalOr(); }
   logicalOr() {
     let left = this.logicalAnd();
-    
-    while (this.currentToken && this.currentToken.type === 'OR') {
-      const operator = this.currentToken.value;
+    while (this.currentToken && this.currentToken.type === "OR") {
+      const op = this.currentToken.value;
       this.advance();
       const right = this.logicalAnd();
-      left = { type: 'LogicalExpression', operator, left, right };
+      left = { type: "LogicalExpression", operator: op, left, right };
     }
-    
     return left;
   }
-
   logicalAnd() {
     let left = this.equality();
-    
-    while (this.currentToken && this.currentToken.type === 'AND') {
-      const operator = this.currentToken.value;
+    while (this.currentToken && this.currentToken.type === "AND") {
+      const op = this.currentToken.value;
       this.advance();
       const right = this.equality();
-      left = { type: 'LogicalExpression', operator, left, right };
+      left = { type: "LogicalExpression", operator: op, left, right };
     }
-    
     return left;
   }
-
   equality() {
     let left = this.comparison();
-    
-    while (
-      this.currentToken && 
-      (this.currentToken.type === 'EQUALS' || this.currentToken.type === 'NOT_EQUALS')
-    ) {
-      const operator = this.currentToken.value;
+    while (this.currentToken && ["EQUALS", "NOT_EQUALS"].includes(this.currentToken.type)) {
+      const op = this.currentToken.value;
       this.advance();
       const right = this.comparison();
-      left = { type: 'BinaryExpression', operator, left, right };
+      left = { type: "BinaryExpression", operator: op, left, right };
     }
-    
     return left;
   }
-
   comparison() {
     let left = this.addition();
-    
-    while (
-      this.currentToken && 
-      (this.currentToken.type === 'GT' || 
-       this.currentToken.type === 'GTE' || 
-       this.currentToken.type === 'LT' || 
-       this.currentToken.type === 'LTE')
-    ) {
-      const operator = this.currentToken.value;
+    while (this.currentToken && ["GT", "GTE", "LT", "LTE"].includes(this.currentToken.type)) {
+      const op = this.currentToken.value;
       this.advance();
       const right = this.addition();
-      left = { type: 'BinaryExpression', operator, left, right };
+      left = { type: "BinaryExpression", operator: op, left, right };
     }
-    
     return left;
   }
-
   addition() {
     let left = this.multiplication();
-    
-    while (
-      this.currentToken && 
-      (this.currentToken.type === 'PLUS' || this.currentToken.type === 'MINUS')
-    ) {
-      const operator = this.currentToken.value;
+    while (this.currentToken && ["PLUS", "MINUS"].includes(this.currentToken.type)) {
+      const op = this.currentToken.value;
       this.advance();
       const right = this.multiplication();
-      left = { type: 'BinaryExpression', operator, left, right };
+      left = { type: "BinaryExpression", operator: op, left, right };
     }
-    
     return left;
   }
-
   multiplication() {
     let left = this.primary();
-    
-    while (
-      this.currentToken && 
-      (this.currentToken.type === 'MULTIPLY' || 
-       this.currentToken.type === 'DIVIDE' || 
-       this.currentToken.type === 'MODULO')
-    ) {
-      const operator = this.currentToken.value;
+    while (this.currentToken && ["MULTIPLY", "DIVIDE", "MODULO"].includes(this.currentToken.type)) {
+      const op = this.currentToken.value;
       this.advance();
       const right = this.primary();
-      left = { type: 'BinaryExpression', operator, left, right };
+      left = { type: "BinaryExpression", operator: op, left, right };
     }
-    
     return left;
   }
-
   primary() {
-    if (this.currentToken.type === 'NUMBER') {
-      return { type: 'Literal', value: this.eat('NUMBER').value };
-    } else if (this.currentToken.type === 'STRING') {
-      return { type: 'Literal', value: this.eat('STRING').value };
-    } else if (this.currentToken.type === 'TRUE') {
-      this.eat('TRUE');
-      return { type: 'Literal', value: true };
-    } else if (this.currentToken.type === 'FALSE') {
-      this.eat('FALSE');
-      return { type: 'Literal', value: false };
-    } else if (this.currentToken.type === 'IDENTIFIER') {
-      const identifier = this.eat('IDENTIFIER');
-      
-      if (this.currentToken && this.currentToken.type === 'LPAREN') {
-        return this.functionCall(identifier.value);
-      }
-      
-      return { type: 'Identifier', name: identifier.value };
-    } else if (this.currentToken.type === 'LPAREN') {
-      this.eat('LPAREN');
+    if (this.currentToken.type === "NUMBER") return { type: "Literal", value: this.eat("NUMBER").value };
+    if (this.currentToken.type === "STRING") return { type: "Literal", value: this.eat("STRING").value };
+    if (this.currentToken.type === "TRUE") { this.eat("TRUE"); return { type: "Literal", value: true }; }
+    if (this.currentToken.type === "FALSE") { this.eat("FALSE"); return { type: "Literal", value: false }; }
+    if (this.currentToken.type === "IDENTIFIER") {
+      const id = this.eat("IDENTIFIER");
+      if (this.currentToken && this.currentToken.type === "LPAREN") return this.functionCall(id.value);
+      return { type: "Identifier", name: id.value };
+    }
+    if (this.currentToken.type === "LPAREN") {
+      this.eat("LPAREN");
       const expr = this.expression();
-      this.eat('RPAREN');
+      this.eat("RPAREN");
       return expr;
     }
-    
     throw new Error(`Unexpected token: ${this.currentToken.type}`);
   }
-
-  parse() {
-    return this.program();
-  }
+  parse() { return this.program(); }
 }
 
-// Interpreter - Executes the AST
-class Interpreter {
-  constructor(globalScope = {}) {
-    this.globalScope = globalScope;
-    this.scope = [this.globalScope];
-    this.returnValue = null;
-    this.baseDir = process.cwd();
+class CodeGenerator {
+  constructor(baseDir, sharedState = null) {
+    this.baseDir = baseDir;
+    // sharedState: {
+    //   compiled: Set(absPaths),
+    //   compilingStack: Array(absPaths),
+    //   projectRoot: absPath,
+    //   outDir: absPath,
+    //   compileFile: function
+    // }
+    this.sharedState = sharedState || {
+      compiled: new Set(),
+      compilingStack: [],
+      projectRoot: process.cwd(),
+      outDir: path.resolve(process.cwd(), "dist"),
+      compileFile: null
+    };
   }
 
-  getCurrentScope() {
-    return this.scope[this.scope.length - 1];
-  }
-
-  evaluate(node) {
+  generate(node) {
     switch (node.type) {
-      case 'Program':
-        return this.evaluateProgram(node);
-      case 'BlockStatement':
-        return this.evaluateBlockStatement(node);
-      case 'VariableDeclaration':
-        return this.evaluateVariableDeclaration(node);
-      case 'AssignmentExpression':
-        return this.evaluateAssignmentExpression(node);
-      case 'BinaryExpression':
-        return this.evaluateBinaryExpression(node);
-      case 'LogicalExpression':
-        return this.evaluateLogicalExpression(node);
-      case 'Literal':
-        return node.value;
-      case 'Identifier':
-        return this.evaluateIdentifier(node);
-      case 'IfStatement':
-        return this.evaluateIfStatement(node);
-      case 'WhileStatement':
-        return this.evaluateWhileStatement(node);
-      case 'FunctionDeclaration':
-        return this.evaluateFunctionDeclaration(node);
-      case 'CallExpression':
-        return this.evaluateCallExpression(node);
-      case 'ReturnStatement':
-        return this.evaluateReturnStatement(node);
-      case 'PrintStatement':
-        return this.evaluatePrintStatement(node);
-      case 'ImportStatement':
-        return this.evaluateImportStatement(node);
+      case "Program":
+        return node.body.map(s => this.generate(s)).join("\n");
+      case "BlockStatement":
+        return `{\n${node.body.map(s => this.generate(s)).join("\n")}\n}`;
+      case "VariableDeclaration":
+        return `let ${node.name} = ${this.generate(node.value)};`;
+      case "AssignmentExpression":
+        return `${node.name} = ${this.generate(node.value)};`;
+      case "BinaryExpression":
+        return `(${this.generate(node.left)} ${node.operator} ${this.generate(node.right)})`;
+      case "LogicalExpression":
+        return `(${this.generate(node.left)} ${node.operator} ${this.generate(node.right)})`;
+      case "Literal":
+        return JSON.stringify(node.value);
+      case "Identifier":
+        return node.name;
+      case "IfStatement":
+        return `if (${this.generate(node.test)}) ${this.generate(node.consequent)}${node.alternate ? ` else ${this.generate(node.alternate)}` : ""}`;
+      case "WhileStatement":
+        return `while (${this.generate(node.test)}) ${this.generate(node.body)}`;
+      case "FunctionDeclaration":
+        return `function ${node.name}(${node.params.join(", ")}) ${this.generate(node.body)}`;
+      case "CallExpression":
+        return `${node.name}(${node.arguments.map(a => this.generate(a)).join(", ")})`;
+      case "ReturnStatement":
+        return `return ${this.generate(node.argument)};`;
+      case "PrintStatement":
+        return `console.log(${this.generate(node.argument)});`;
+      case "ImportStatement":
+        return this.handleImport(node.path);
       default:
         throw new Error(`Unknown node type: ${node.type}`);
     }
   }
 
-  evaluateProgram(node) {
-    let result;
-    
-    for (const statement of node.body) {
-      result = this.evaluate(statement);
-      
-      if (this.returnValue !== null) {
-        const temp = this.returnValue;
-        this.returnValue = null;
-        return temp;
+  handleImport(importPath) {
+    // Resolve path relative to current baseDir
+    const fullPath = path.resolve(this.baseDir, importPath);
+
+    // Cycle detection: if currently being compiled up the chain
+    if (this.sharedState.compilingStack.includes(fullPath)) {
+      console.warn(`⚠️ Cyclic import detected (skipping inline): ${fullPath}`);
+      return `/* cyclic import skipped: ${path.relative(this.sharedState.projectRoot, fullPath)} */`;
+    }
+
+    // If already compiled earlier, we still will try to inline its generated code (read from outDir if possible)
+    // But first, ensure it's compiled/write to outDir (so project has the file)
+    if (typeof this.sharedState.compileFile === "function") {
+      // compileFile will compile+write the imported file (and return its generated JS)
+      try {
+        const childJs = this.sharedState.compileFile(fullPath);
+        // Inline the child's code into the parent as well (keeps behavior similar to previous version)
+        return childJs || `/* imported ${path.basename(fullPath)} */`;
+      } catch (err) {
+        throw new Error(`Error compiling import ${importPath}: ${err.message}`);
       }
-    }
-    
-    return result;
-  }
-
-  evaluateBlockStatement(node) {
-    this.scope.push({});
-    
-    let result;
-    for (const statement of node.body) {
-      result = this.evaluate(statement);
-      
-      if (this.returnValue !== null) {
-        break;
-      }
-    }
-    
-    this.scope.pop();
-    return result;
-  }
-
-  evaluateVariableDeclaration(node) {
-    const value = this.evaluate(node.value);
-    this.getCurrentScope()[node.name] = value;
-    return value;
-  }
-
-  evaluateAssignmentExpression(node) {
-    const value = this.evaluate(node.value);
-    
-    for (let i = this.scope.length - 1; i >= 0; i--) {
-      if (node.name in this.scope[i]) {
-        this.scope[i][node.name] = value;
-        return value;
-      }
-    }
-    
-    throw new Error(`Variable ${node.name} is not defined`);
-  }
-
-  evaluateBinaryExpression(node) {
-    const left = this.evaluate(node.left);
-    const right = this.evaluate(node.right);
-    
-    switch (node.operator) {
-      case '+':
-        return left + right;
-      case '-':
-        return left - right;
-      case '*':
-        return left * right;
-      case '/':
-        return left / right;
-      case '%':
-        return left % right;
-      case '==':
-        return left === right;
-      case '!=':
-        return left !== right;
-      case '>':
-        return left > right;
-      case '>=':
-        return left >= right;
-      case '<':
-        return left < right;
-      case '<=':
-        return left <= right;
-      default:
-        throw new Error(`Unknown operator: ${node.operator}`);
-    }
-  }
-
-  evaluateLogicalExpression(node) {
-    const left = this.evaluate(node.left);
-    
-    if (node.operator === '&&') {
-      return left ? this.evaluate(node.right) : left;
-    } else if (node.operator === '||') {
-      return left ? left : this.evaluate(node.right);
-    }
-    
-    throw new Error(`Unknown logical operator: ${node.operator}`);
-  }
-
-  evaluateIdentifier(node) {
-    for (let i = this.scope.length - 1; i >= 0; i--) {
-      if (node.name in this.scope[i]) {
-        return this.scope[i][node.name];
-      }
-    }
-    
-    throw new Error(`Variable ${node.name} is not defined`);
-  }
-
-  evaluateIfStatement(node) {
-    const test = this.evaluate(node.test);
-    
-    if (test) {
-      return this.evaluate(node.consequent);
-    } else if (node.alternate) {
-      return this.evaluate(node.alternate);
-    }
-    
-    return null;
-  }
-
-  evaluateWhileStatement(node) {
-    let result;
-    
-    while (this.evaluate(node.test)) {
-      result = this.evaluate(node.body);
-      
-      if (this.returnValue !== null) {
-        break;
-      }
-    }
-    
-    return result;
-  }
-
-  evaluateFunctionDeclaration(node) {
-    const func = {
-      type: 'function',
-      name: node.name,
-      params: node.params,
-      body: node.body,
-      scope: [...this.scope]
-    };
-    
-    this.getCurrentScope()[node.name] = func;
-    return func;
-  }
-
-  evaluateCallExpression(node) {
-    let func;
-    
-    for (let i = this.scope.length - 1; i >= 0; i--) {
-      if (node.name in this.scope[i]) {
-        func = this.scope[i][node.name];
-        break;
-      }
-    }
-    
-    if (!func || func.type !== 'function') {
-      throw new Error(`${node.name} is not a function`);
-    }
-    
-    const args = node.arguments.map(arg => this.evaluate(arg));
-    const previousScope = this.scope;
-    
-    this.scope = [...func.scope];
-    this.scope.push({});
-    
-    for (let i = 0; i < func.params.length; i++) {
-      this.getCurrentScope()[func.params[i]] = args[i];
-    }
-    
-    const result = this.evaluate(func.body);
-    this.scope = previousScope;
-    
-    if (this.returnValue !== null) {
-      const temp = this.returnValue;
-      this.returnValue = null;
-      return temp;
-    }
-    
-    return result;
-  }
-
-  evaluateReturnStatement(node) {
-    this.returnValue = this.evaluate(node.argument);
-    return this.returnValue;
-  }
-
-  evaluatePrintStatement(node) {
-    const value = this.evaluate(node.argument);
-    console.log(value);
-    return value;
-  }
-
-  evaluateImportStatement(node) {
-    const filePath = path.resolve(this.baseDir, node.path);
-
-    if (importedFiles.has(filePath)) {
-      return null;
-    }
-    
-    try {
-      importedFiles.add(filePath);
-      const code = fs.readFileSync(filePath, 'utf8');
-      const previousBaseDir = this.baseDir;
-      this.baseDir = path.dirname(filePath);
-      const result = processImport(code, this.globalScope, this.baseDir);
-      this.baseDir = previousBaseDir;
-      
-      return result;
-    } catch (error) {
-      throw new Error(`Error importing file ${node.path}: ${error.message}`);
+    } else {
+      // Fallback: read file and generate inline, but do not write separate file
+      if (!fs.existsSync(fullPath)) throw new Error(`Imported file not found: ${importPath}`);
+      const code = fs.readFileSync(fullPath, "utf8");
+      const lexer = new Lexer(code);
+      const tokens = lexer.tokenize();
+      const parser = new Parser(tokens);
+      const ast = parser.parse();
+      const childGenerator = new CodeGenerator(path.dirname(fullPath), this.sharedState);
+      return childGenerator.generate(ast);
     }
   }
 }
 
-// Function to process imported files
-function processImport(code, globalScope, baseDir) {
-  try {
-    const lexer = new Lexer(code);
-    const tokens = lexer.tokenize();
-    
-    const parser = new Parser(tokens);
-    const ast = parser.parse();
-    
-    // Use the same global scope for the imported file
-    const interpreter = new Interpreter(globalScope);
-    interpreter.baseDir = baseDir;
-    
-    return interpreter.evaluate(ast);
-  } catch (error) {
-    throw new Error(`Error processing import: ${error.message}`);
-  }
+// ---------------- Transpiler ----------------
+function transpile(code, baseDir = process.cwd(), sharedState = null) {
+  const lexer = new Lexer(code);
+  const tokens = lexer.tokenize();
+  const parser = new Parser(tokens);
+  const ast = parser.parse();
+  const generator = new CodeGenerator(baseDir, sharedState);
+  return generator.generate(ast);
 }
 
-// Main function to run the interpreter
-function runInterpreter(code, isMainFile = true) {
-  try {
-    const lexer = new Lexer(code);
-    const tokens = lexer.tokenize();
-    
-    const parser = new Parser(tokens);
-    const ast = parser.parse();
-    
-    const interpreter = new Interpreter();
-    const result = interpreter.evaluate(ast);
-    
-    if (isMainFile) {
-      importedFiles.clear();
+// ---------------- Helpers: file discovery (simple include support) ----------------
+function walkDir(dir, fileList = []) {
+  if (!fs.existsSync(dir)) return fileList;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walkDir(full, fileList);
+    } else if (entry.isFile()) {
+      fileList.push(full);
     }
-    
-    return result;
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
-    if (isMainFile) {
-      importedFiles.clear();
-    }
-    return { success: false, error: error.message };
   }
+  return fileList;
 }
 
-// Command-line interface
-function main() {
-  const args = process.argv.slice(2);
-  
-  if (args.length === 0) {
-    console.log('Usage: node asc.js <filename.as>');
+function matchIncludePatterns(rootDir, patterns) {
+  // Very small subset: support "**/*.as" and "*.as" (no full glob library)
+  const allFiles = walkDir(rootDir);
+  const matched = new Set();
+  for (const pat of patterns) {
+    if (pat === "**/*.as" || pat === "**/*.AS") {
+      for (const f of allFiles) if (f.endsWith(".as")) matched.add(f);
+    } else if (pat.endsWith("/*.as")) {
+      const folder = pat.slice(0, -("/*.as".length));
+      const fullFolder = path.resolve(rootDir, folder);
+      if (fs.existsSync(fullFolder) && fs.statSync(fullFolder).isDirectory()) {
+        const entries = fs.readdirSync(fullFolder);
+        for (const e of entries) {
+          const full = path.join(fullFolder, e);
+          if (full.endsWith(".as")) matched.add(full);
+        }
+      }
+    } else if (pat === "*.as") {
+      const entries = fs.readdirSync(rootDir);
+      for (const e of entries) {
+        const full = path.join(rootDir, e);
+        if (full.endsWith(".as")) matched.add(full);
+      }
+    } else {
+      // direct file path relative to rootDir
+      const candidate = path.resolve(rootDir, pat);
+      if (fs.existsSync(candidate) && candidate.endsWith(".as")) matched.add(candidate);
+    }
+  }
+  return [...matched];
+}
+
+// ---------------- Build logic ----------------
+/*
+sharedState:
+  compiled: Set of absolute source paths already compiled/written
+  compilingStack: current recursion stack (for cycle detection)
+  projectRoot: absolute path used to compute relative outputs
+  outDir: absolute path to place generated JS files
+  compileFile: function that compiles a given absolute .as path and returns its JS string
+*/
+function compileAndWrite(filePath, sharedState) {
+  const fullPath = path.resolve(filePath);
+
+  // if already compiled, return its JS content (from outDir) if exists
+  if (sharedState.compiled.has(fullPath)) {
+    // try to read the already-written output
+    const rel = path.relative(sharedState.projectRoot, fullPath);
+    const outFile = path.join(sharedState.outDir, rel).replace(/\.as$/, ".js");
+    if (fs.existsSync(outFile)) {
+      return fs.readFileSync(outFile, "utf8");
+    }
+    return ""; // nothing to return
+  }
+
+  if (sharedState.compilingStack.includes(fullPath)) {
+    console.warn(`⚠️ Cyclic import detected while compiling: ${fullPath}`);
+    return `/* cyclic import skipped: ${path.relative(sharedState.projectRoot, fullPath)} */`;
+  }
+
+  if (!fs.existsSync(fullPath)) {
+    throw new Error(`File not found: ${fullPath}`);
+  }
+
+  sharedState.compilingStack.push(fullPath);
+  const code = fs.readFileSync(fullPath, "utf8");
+  // transpile will call sharedState.compileFile for nested imports (we set that below)
+  const jsCode = transpile(code, path.dirname(fullPath), sharedState);
+
+  // mark compiled and write output preserving directory structure relative to projectRoot
+  const rel = path.relative(sharedState.projectRoot, fullPath);
+  const outFile = path.join(sharedState.outDir, rel).replace(/\.as$/, ".js");
+  fs.mkdirSync(path.dirname(outFile), { recursive: true });
+  fs.writeFileSync(outFile, jsCode, "utf8");
+
+  sharedState.compiled.add(fullPath);
+  sharedState.compilingStack.pop();
+
+  console.log(`Compiled: ${fullPath} → ${outFile}`);
+  return jsCode;
+}
+
+function buildProjectFromConfig(configPath) {
+  const configAbs = path.resolve(configPath);
+  if (!fs.existsSync(configAbs)) {
+    console.error(`Config file not found: ${configPath}`);
     process.exit(1);
   }
-  
-  const filename = args[0];
-  
+
+  const raw = fs.readFileSync(configAbs, "utf8");
+  let config;
   try {
-    const code = fs.readFileSync(filename, 'utf8');
-    console.log(`Running ${filename}...\n`);
-    runInterpreter(code);
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      console.error(`Error: File '${filename}' not found.`);
-    } else {
-      console.error(`Error: ${error.message}`);
+    config = JSON.parse(raw);
+  } catch (err) {
+    console.error(`Error parsing ${configPath}: ${err.message}`);
+    process.exit(1);
+  }
+
+  const projectRoot = path.dirname(configAbs);
+  const outDir = path.resolve(projectRoot, config.outDir || "dist");
+  const rootDir = config.rootDir ? path.resolve(projectRoot, config.rootDir) : projectRoot;
+
+  // determine source files:
+  let sourceFiles = [];
+  if (Array.isArray(config.files) && config.files.length > 0) {
+    sourceFiles = config.files.map(p => path.resolve(projectRoot, p));
+  } else if (Array.isArray(config.include) && config.include.length > 0) {
+    sourceFiles = matchIncludePatterns(rootDir, config.include);
+  } else {
+    // fallback: collect all .as in rootDir
+    const all = walkDir(rootDir).filter(f => f.endsWith(".as"));
+    sourceFiles = all;
+  }
+
+  // prepare sharedState
+  const sharedState = {
+    compiled: new Set(),
+    compilingStack: [],
+    projectRoot,
+    outDir,
+    compileFile: null // filled below
+  };
+
+  // assign compileFile to allow CodeGenerator to request compilation of imports
+  sharedState.compileFile = (absPath) => compileAndWrite(absPath, sharedState);
+
+  // ensure outDir exists
+  fs.mkdirSync(outDir, { recursive: true });
+
+  // Compile each entry file (this will recursively compile imports)
+  for (const f of sourceFiles) {
+    try {
+      compileAndWrite(f, sharedState);
+    } catch (err) {
+      console.error(`Error compiling ${f}: ${err.message}`);
     }
+  }
+
+  console.log(`\nBuild finished. Output in: ${outDir}`);
+}
+
+// ---------------- CLI ----------------
+function createDefaultConfig(filename = "asconfig.json") {
+  const defaultConfig = {
+    rootDir: "src",
+    outDir: "dist",
+    include: ["**/*.as"]
+  };
+
+  if (fs.existsSync(filename)) {
+    console.log(`⚠️  ${filename} already exists`);
+    return;
+  }
+
+  fs.writeFileSync(filename, JSON.stringify(defaultConfig, null, 2), "utf8");
+  console.log(`✅ ${filename} created`);
+  console.log("Put your .as files into the rootDir (default: src/) and run `asc build` or `node asc.js build`");
+}
+
+function printUsage() {
+  console.log(`Usage:
+  asc init                # create asconfig.json with defaults
+  asc build [config]      # build project using asconfig.json (default: ./asconfig.json)
+  asc <file.as>           # compile single file (imports compiled "for company") into same-folder or outDir if config exists
+`);
+}
+
+function main() {
+  const args = process.argv.slice(2);
+  const cwd = process.cwd();
+  const configPath = path.join(cwd, "asconfig.json");
+
+  if (args.length === 0) {
+    // If asconfig.json exists do build otherwise show usage
+    if (fs.existsSync(configPath)) {
+      buildProjectFromConfig(configPath);
+    } else {
+      printUsage();
+      process.exit(1);
+    }
+    return;
+  }
+
+  const cmd = args[0];
+
+  if (cmd === "init") {
+    createDefaultConfig(configPath);
+    return;
+  }
+
+  if (cmd === "build") {
+    const cfg = args[1] || configPath;
+    buildProjectFromConfig(cfg);
+    return;
+  }
+
+  // Otherwise, treat first arg as a single file to compile
+  const inputFile = cmd;
+  const absInput = path.resolve(inputFile);
+  if (!fs.existsSync(absInput)) {
+    console.error(`File not found: ${inputFile}`);
+    process.exit(1);
+  }
+
+  // If asconfig.json exists, use its outDir, otherwise write next to input file
+  let outDir = path.dirname(absInput);
+  if (fs.existsSync(configPath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      const projectRoot = path.dirname(configPath);
+      outDir = path.resolve(projectRoot, cfg.outDir || "dist");
+      fs.mkdirSync(outDir, { recursive: true });
+    } catch (err) {
+      console.warn(`Warning: failed to read asconfig.json: ${err.message}. Falling back to input directory.`);
+    }
+  }
+
+  // prepare sharedState for single-file compile
+  const projectRootSingle = path.dirname(absInput);
+  const sharedState = {
+    compiled: new Set(),
+    compilingStack: [],
+    projectRoot: projectRootSingle,
+    outDir,
+    compileFile: null
+  };
+  sharedState.compileFile = (absPath) => compileAndWrite(absPath, sharedState);
+
+  try {
+    compileAndWrite(absInput, sharedState);
+    console.log("Done.");
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
     process.exit(1);
   }
 }

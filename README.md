@@ -5,7 +5,7 @@
 [![Downloads](https://img.shields.io/npm/dm/abstractscript.svg)](https://www.npmjs.com/package/abstractscript)
 
 
-AbstractScript is a simple functional programming language interpreted in a JavaScript environment.
+AbstractScript is a simple functional programming language compiled in a JavaScript environment. (Interpreter is deprecated)
 
 Find others who are using AbstractScript at our community page(in development).
 

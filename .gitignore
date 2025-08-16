@@ -3,3 +3,8 @@ package-lock.json
 test.as
 node_modules
 test.js
+asconfig.j1son
+asconfig.j12son
+asconfig.json
+sample.js
+./dist/*

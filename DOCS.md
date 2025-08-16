@@ -22,7 +22,7 @@ AbstractScript is a lightweight, interpreted programming language designed for s
 
 ### Installation
 
-1. Save the AbstractScript interpreter as `asc.js`
+1. Save the AbstractScript interpreter as `as-node` or compiler as `asc`
 2. Make it executable: `chmod +x asc.js`
 3. Create a script file with the `.as` extension
 4. Run your script: `node asc.js yourscript.as`
